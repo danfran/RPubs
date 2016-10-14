@@ -1,0 +1,194 @@
+---
+title: "Fatalities and Damages for Weather Events (Reproducible Research: Peer Assignment 2)"
+author: "Daniele Francesconi"
+date: "October 2, 2016"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Synopsis
+
+The used data and documentation are realtive to US NOAA recorded weather events. The events from 1950 through 2011 are associated to fatalities, injuries, property and crop damages.
+
+Different issues relative to the labelling of the events have required an extra reworking to associate them to the original labels as in documentation. Similar problem but in minor scale has been found in the expenses multipliers that included wrong values. The rows with only zeros have been taken out as not relevant to the final count.
+
+Finally a new table with the total counts of harmful events and damage costs has been created associated with the correct events as in documentation.
+
+From the last table two bar plots have been created, representing the events that caused more fatalities/injuries and property/crop damages sorted in decreasing order. Overall turned out that Tornado causes more fatalities/injuries and Flood more expenses.
+
+## Data Processing
+
+First phase is downloading the data. I have put a guard to avoid to download the data more than once:
+
+```{r}
+if (!file.exists("./repdata%2Fdata%2FStormData.csv")) {
+  download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2")
+  unzip("storm-data.csv.bz2")
+}
+```
+
+### Loading data and extracting meaningful features
+
+Once the data have been downloaded, I created a dataframe parsing the data as normal CSV:
+
+```{r cache = TRUE}
+storm <- read.csv("repdata%2Fdata%2FStormData.csv", stringsAsFactors = FALSE)
+```
+
+Looking at the documentation, I extracted the necessary features to another dataframe:
+
+```{r cache = TRUE}
+storm2 <- subset(storm, select = c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP"))
+```
+
+### Discovering potential issues with the data
+
+First a look to the new data structure:
+
+```{r}
+str(storm2)
+```
+
+Due to potential typos, mispelled words, extra spaces, etc, I checked if the numbers of unique events was exactly 48 as by documentation:
+
+```{r}
+tot_event_types <- length(unique(storm2$EVTYPE))
+```
+
+The number `r tot_event_types` looks much bigger than the 48 event types in the documentation. Another look to the event types in our data reveals that there are synonyms associated to the same event type. For example `TSTM` refers to Thunderstorm and it can be found mixed up with other labels, different times:
+
+```{r}
+unique(storm2$EVTYPE[grepl("TSTM", storm2$EVTYPE, ignore.case = TRUE)])
+sum(storm2$FATALITIES[grepl("TSTM", storm2$EVTYPE, ignore.case = TRUE)])
+```
+
+### Reducing the number of observations
+
+It is clear that a fix to the events is required.
+The first step is reducing as much as possible the number of events to fix. To do that I excluded the rows that have only zeros values relatively to the numeric columns `FATALITIES`, `INJURIES`, `PROPDMG`, `CROPDMG` as they won't be relevant for any further calculation:
+
+```{r}
+storm2 <- storm2[storm2$FATALITIES != 0 | storm2$INJURIES != 0 | storm2$PROPDMG != 0 | storm2$CROPDMG != 0,]
+length(unique(storm2$EVTYPE))
+```
+
+Now the total number of event types is behalved.
+
+### Fixing the expenses relatives to the damages
+
+The expenses relative to the property damages are splitted in two columns `PROPDMG` and `PROPDMGEXP`. Similarly for the crop's damages we have `CROPDMG` and `CROPDMGEXP`. To get the real cost of a damage you have to multiply the two column values. However the values in the `PROPDMGEXP/CROPDMGEXP` columns are not values but labels:
+
+```{r}
+unique(storm2$PROPDMGEXP)
+unique(storm2$CROPDMGEXP)
+```
+
+Some of the labels are wrong, the other refers to the number of zeros to multiply. For example `6` is `10^6`, `B` as billion is `10^9` and so on. Below I created a sort of lookup table for this values and I have used it to generate two new columns `NEWPROPDMG/NEWCROPDMG`. Those columns include now the full cost of the damages:
+
+```{r}
+dmg_exp_keys <- c("","?","-","+","0","2","3","4","5","6","7","h","H","k","K","m","M","B")
+dmg_exp_values <- c(1,1,1,1,1,10^2,10^3,10^4,10^5,10^6,10^7,10^2,10^2,10^3,10^3,10^6,10^6,10^9)
+
+storm2$NEWPROPDMG <- storm2$PROPDMG * dmg_exp_values[match(storm2$PROPDMGEXP,dmg_exp_keys)]
+storm2$NEWCROPDMG <- storm2$CROPDMG * dmg_exp_values[match(storm2$CROPDMGEXP,dmg_exp_keys)]
+```
+
+### Creating a separate table with the necessary counts
+
+I created a new data frame with the same structure of `storm2` but it keeps the total counts only. The counts are based on the value associated for a single event type as in documentation. A single event type, as we said, has different "synonyms" (e.g. THUNDERSTORM -> TSTM, THUN, etc.). For all of those event types I have created and verified some "parsing rules" and I have counted the total number of fatalities, injuries and damages costs associated:
+
+```{r cache = TRUE}
+find_by_event <- function (storm2, storm_counts, event, synonyms) { 
+  values <- storm2[grepl(event, storm2$EVTYPE, ignore.case = TRUE, perl = TRUE),]
+  storm_counts <- rbind(storm_counts, data.frame(
+    EVTYPE = event, 
+    FATALITIES = sum(values$FATALITIES), 
+    INJURIES = sum(values$INJURIES), 
+    NEWPROPDMG = sum(values$NEWPROPDMG), 
+    NEWCROPDMG = sum(values$NEWCROPDMG)))
+  return (storm_counts)
+}
+
+storm_counts <- storm2[0,]
+storm_counts <- find_by_event(storm2, storm_counts, "ASTRONOMICAL LOW TIDE", "ASTRONOMICAL LOW TIDE")
+storm_counts <- find_by_event(storm2, storm_counts, "AVALANCHE", "AVAL")
+storm_counts <- find_by_event(storm2, storm_counts, "BLIZZARD", "BLIZ")
+storm_counts <- find_by_event(storm2, storm_counts, "COASTAL FLOOD", "(?=.*(COAS|CST))(?=.*FLO)")
+storm_counts <- find_by_event(storm2, storm_counts, "COLD/WIND CHILL", "^(?!.*EXTR)(?=.*(COLD|WIND))(?=.*CHILL)")
+storm_counts <- find_by_event(storm2, storm_counts, "DEBRIS FLOW", "(?=.*DEB)(?=.*FL)")
+storm_counts <- find_by_event(storm2, storm_counts, "DENSE FOG", "(?=.*DEN)(?=.*FO)")
+storm_counts <- find_by_event(storm2, storm_counts, "DENSE SMOKE", "(?=.*DEN)(?=.*SM)")
+storm_counts <- find_by_event(storm2, storm_counts, "DROUGHT", "DRO")
+storm_counts <- find_by_event(storm2, storm_counts, "DUST DEVIL", "(?=.*DUS)(?=.*DE)")
+storm_counts <- find_by_event(storm2, storm_counts, "DUST STORM", "(?=.*DUS)(?=.*STO)")
+storm_counts <- find_by_event(storm2, storm_counts, "EXCESSIVE HEAT", "(?=.*(EXC|EXT|REC))(?=.*HEAT)")
+storm_counts <- find_by_event(storm2, storm_counts, "EXTREME COLD/WIND CHILL", "^(?=.*EXTR)(?=.*(COLD|WIND))(?=.*CHILL)")
+storm_counts <- find_by_event(storm2, storm_counts, "FLASH FLOOD", "(?=.*FLA)(?=.*FLO)")
+storm_counts <- find_by_event(storm2, storm_counts, "FLOOD", "^(?!.*(LAK|COAS|CST|FLA))(?=.*FLO)")
+storm_counts <- find_by_event(storm2, storm_counts, "FROST/FREEZE", "(?=.*FRO)(?=.*FRE)")
+storm_counts <- find_by_event(storm2, storm_counts, "FUNNEL CLOUD", "(?=.*FU)(?=.*CL)")
+storm_counts <- find_by_event(storm2, storm_counts, "FREEZING FOG", "(?=.*FRE)(?=.*FO)")
+storm_counts <- find_by_event(storm2, storm_counts, "HAIL", "^(?!.*MAR)(?=.*HAI)")
+storm_counts <- find_by_event(storm2, storm_counts, "HEAT", "^(?!.*(EXC|EXT|REC))(?=.*HEAT)")
+storm_counts <- find_by_event(storm2, storm_counts, "HEAVY RAIN", "(?=.*(HEAVY|HVY|GUSTY|STORM|FALL))(?=.*RAIN)")
+storm_counts <- find_by_event(storm2, storm_counts, "HEAVY SNOW", "(?=.*(HEAVY|SQUALL|RECORD|EXCESSIVE|STORM|THUNDER))(?=.*SNOW)")
+storm_counts <- find_by_event(storm2, storm_counts, "HIGH SURF", "SURF")
+storm_counts <- find_by_event(storm2, storm_counts, "HIGH WIND", "^(?!.*MAR)(?=.*HIG)(?=.*WIND)")
+storm_counts <- find_by_event(storm2, storm_counts, "HURRICANE (TYPHOON)", "HUR|TYP")
+storm_counts <- find_by_event(storm2, storm_counts, "ICE STORM", "(?=.*ICE)(?=.*STO)")
+storm_counts <- find_by_event(storm2, storm_counts, "LAKE-EFFECT SNOW", "(?=.*LAK)(?=.*SNO)")
+storm_counts <- find_by_event(storm2, storm_counts, "LAKESHORE FLOOD", "(?=.*LAK)(?=.*FLO)")
+storm_counts <- find_by_event(storm2, storm_counts, "LIGHTNING", "LIGHTN")
+storm_counts <- find_by_event(storm2, storm_counts, "MARINE HAIL", "(?=.*MAR)(?=.*HAI)")
+storm_counts <- find_by_event(storm2, storm_counts, "MARINE HIGH WIND", "(?=.*MAR)(?=.*HIG)(?=.*WIN)")
+storm_counts <- find_by_event(storm2, storm_counts, "MARINE STRONG WIND", "(?=.*MAR)(?=.*STR)(?=.*WIN)")
+storm_counts <- find_by_event(storm2, storm_counts, "MARINE THUNDERSTORM WIND", "(?=.*MAR)(?=.*(TSTM|THUN))(?=.*WIN)")
+storm_counts <- find_by_event(storm2, storm_counts, "RIP CURRENT", "(?=.*RIP)(?=.*CUR)")
+storm_counts <- find_by_event(storm2, storm_counts, "SEICHE", "SEIC")
+storm_counts <- find_by_event(storm2, storm_counts, "SLEET", "SLE")
+storm_counts <- find_by_event(storm2, storm_counts, "STORM SURGE/TIDE", "(?=.*STO)(?=.*(SUR|TID))")
+storm_counts <- find_by_event(storm2, storm_counts, "STRONG WIND", "(?=.*STRON)(?=.*WIN)")
+storm_counts <- find_by_event(storm2, storm_counts, "THUNDERSTORM WIND", "^(?!.*MAR)(?=.*(TSTM|THUN))(?=.*WIN)")
+storm_counts <- find_by_event(storm2, storm_counts, "TORNADO", "TORN")
+storm_counts <- find_by_event(storm2, storm_counts, "TROPICAL DEPRESSION", "(?=.*TROP)(?=.*DEP)")
+storm_counts <- find_by_event(storm2, storm_counts, "TROPICAL STORM", "(?=.*TROP)(?=.*STO)")
+storm_counts <- find_by_event(storm2, storm_counts, "TSUNAMI", "TSU")
+storm_counts <- find_by_event(storm2, storm_counts, "VOLCANIC ASH", "VOLC")
+storm_counts <- find_by_event(storm2, storm_counts, "WATERSPOUT", "RSPOU")
+storm_counts <- find_by_event(storm2, storm_counts, "WILDFIRE", "(?=.*WIL)(?=.*FIR)")
+storm_counts <- find_by_event(storm2, storm_counts, "WINTER STORM", "(?=.*WINT)(?=.*STO)")
+storm_counts <- find_by_event(storm2, storm_counts, "WINTER WEATHER", "(?=.*WIN)(?=.*WEA)")
+storm_counts
+```
+
+Finally I have added two columns representing the total of injuries + fatalities, and the total of property + crop damages:
+
+```{r cache = TRUE}
+storm_counts$TOTAL_HARM <- storm_counts$FATALITIES + storm_counts$INJURIES
+storm_counts$TOTAL_DAMAGES <- storm_counts$NEWPROPDMG + storm_counts$NEWCROPDMG
+```
+
+## Results
+
+The first result is relative to the fatal events on the population due to weather events. It shows a bar-plot that returns the events sorted by harmfulness:
+
+```{r fig.height=10}
+total_harm <- subset(storm_counts[order(storm_counts$TOTAL_HARM),], select = c("EVTYPE", "TOTAL_HARM"))
+
+par(mar=c(10,15,10,0))
+barplot(total_harm$TOTAL_HARM, names.arg = total_harm$EVTYPE, horiz=TRUE, las = 2, cex.names = 0.7, main = "Fatalities and Injuries for Weather Events")
+```
+
+Similar results but this time for the total amount of damages are returned in this second bar-plot:
+
+```{r fig.height=10}
+total_damages <- subset(storm_counts[order(storm_counts$TOTAL_DAMAGES),], select = c("EVTYPE", "TOTAL_DAMAGES"))
+
+par(mar=c(10,15,10,0))
+barplot(total_damages$TOTAL_DAMAGES, names.arg = total_damages$EVTYPE, horiz=TRUE, las = 2, cex.names = 0.7, main = "Property and Crop Damage Expenses for Weather Events")
+```
