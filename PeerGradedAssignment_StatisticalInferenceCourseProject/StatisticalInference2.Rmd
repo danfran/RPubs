@@ -1,5 +1,5 @@
 ---
-title: "Verify that the Change of Dosage and Type Supplement for Vitamin C Affects the Tooth Growth in Guinea Pigs"
+title: "Verification of Hypothesis About How the Change of Dosage and Type Supplement for Vitamin C Affects the Tooth Growth in Guinea Pigs"
 author: Daniele Francesconi
 output: html_document
 date: "November 16th, 2016"
@@ -10,14 +10,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Overview
-In this document is reported the second part of the peer-graded assignment for the [Statistical Inference Course](https://www.coursera.org/learn/statistical-inference). In this part of the project the data relative to "The Effect of Vitamin C on Tooth Growth in Guinea Pigs" included in the R dataset `ToothGrowth`.
+In this document is reported the second part of the peer-graded assignment for the [Statistical Inference Course](https://www.coursera.org/learn/statistical-inference). In this part of the project the data relative to "The Effect of Vitamin C on Tooth Growth in Guinea Pigs" included in the R dataset `ToothGrowth` will be analysed to see if its two main parameter, dosage and type supplement affect the length of the tooth growth in Guinea Pigs.
 
 ## Exploratory Data Analyses
 
 First the data description included in the dataset package:
+
 ```
 The response is the length of odontoblasts (cells responsible for tooth growth) in 60 guinea pigs. Each animal received one of three dose levels of vitamin C (0.5, 1, and 2 mg/day) by one of two delivery methods, (orange juice or ascorbic acid (a form of vitamin C and coded as VC).
 ```
+
+Below the relative data summary:
 
 ```{r}
 data(ToothGrowth)
@@ -26,9 +29,9 @@ head(ToothGrowth)
 
 The 3 features of the files are:
 
-* len = Tooth length
-* supp = Supplement type
-* dose = Dose in milligrams/day
+* `len` = Tooth length
+* `supp` = Supplement type
+* `dose` = Dose in milligrams/day
 
 ```{r}
 summary(ToothGrowth)
@@ -37,8 +40,8 @@ unique(ToothGrowth$dose)
 unique(ToothGrowth$supp)
 ```
 
-As we can see the `dose` has only three values (0.5, 1.0, 2.0) and the supplement two: OJ and VC.
-A quick data representation
+As we can see the `dose` has only three values (0.5, 1.0, 2.0) and the type supplement `supp` two: OJ and VC.
+A quick display of the data 
 
 ```{r}
 require(graphics)
@@ -46,27 +49,40 @@ coplot(len ~ dose | supp, data = ToothGrowth, panel = panel.smooth,
        xlab = "ToothGrowth data: length vs dose, given type of supplement")
 ```
 
-give us the impression that the tooth growth is correlated with the dose: higher dose, more growth. This effect looks more visible with the VC type supplement.
+give us the impression that a higher tooth growth is correlated with the increasing dosage. This effect looks more visible with the VC type supplement. It also suggests that type supplements could affect the tooth growth.
 
 ## Hypothesis Tests
 
-I will verify the following hypothesis defining what are my NULL hypothesis for any respective case:
+These are the hypothesis that I am going to verify, including NULL and alternative hypothesis for any respective case:
 
-* **Type supplement** There is no length difference when VC and OJ are used. The alternate hypotesis says that the length with OJ > VC.
-* **Dosage** There is no length difference when difference dosage is used by supplement type. The alternate hypotesis says that the length with dosage at 2.0 > 1.0 > 0.5.
+1 **Type supplement**
 
-The basic assumptions are that the variables are independent and identically distributed (iid). The tooth growth follows a normal distribution and the relative variance changes against the dosage and supplement type.
+ * *NULL hypothesis* > There is no length difference when VC and OJ are used. 
+ * *Alternative hypothesis* > More tooth growth increasing with OJ respect to VC.
+
+2 **Dosage** 
+
+ * *NULL hypothesis* > There is no length difference when difference dosage is used by supplement type.
+ * *Alternative hypothesis* > More tooth growth increasing for higher dosage (2.0 > 1.0 > 0.5) by supplement type.
+ 
+Before to proceed with the verification of the hypothesis, I formulate some basic assumptions around the data:
+
+- The tooth growth follows a normal distribution
+- The variables are independent and identically distributed (iid).
+- The relative variance changes against the dosage and supplement type.
+
+I am going to use the R function `t.test(...)` and the p-value returned from it, which is the main index to accept or reject the hypothesis. I will keep as default its parameters for `paired = FALSE`, `var.equal = FALSE` and `conf.level = 0.95`.
 
 ### Hypothesis Tests for Type Supplement VC / OJ
 
-To verify the hypothesis I used the R function `t.test(...)`. First I separated two subsets based on type supplement:
+To verify the hypothesis relative to type supplement, I start separating in two subsets the data, based on type supplement:
 
 ```{r}
 tg_oj <- ToothGrowth[ToothGrowth$supp == "OJ",]$len
 tg_vc <- ToothGrowth[ToothGrowth$supp == "VC",]$len
 ```
 
-and I compared the two subsets as independent (default condition for the `t.test` function) to get the `p-value`:
+and I compare the two subsets as independent to get the `p-value`:
 
 ```{r}
 t.test (tg_oj, tg_vc, alternative = "greater")$p.value
@@ -76,7 +92,7 @@ The returned p-value is smaller than 0.05. It suggests that I can reject the NUL
 
 ### Dosage by Type Supplement
 
-I start to isolate data by different dosage for the supplement type OJ:
+I start to separate data by different dosage for the supplement type OJ:
 
 ```{r}
 d_05_OJ <- ToothGrowth[ToothGrowth$dose == 0.5 & ToothGrowth$supp == "OJ",]$len
@@ -84,14 +100,14 @@ d_10_OJ <- ToothGrowth[ToothGrowth$dose == 1.0 & ToothGrowth$supp == "OJ",]$len
 d_20_OJ <- ToothGrowth[ToothGrowth$dose == 2.0 & ToothGrowth$supp == "OJ",]$len
 ```
 
-How it has been done before, let's see what the `t.test` returns:
+In a similar way to it was done before, let's see what the `t.test` returns:
 
 ```{r}
 t.test (d_05_OJ, d_10_OJ, alternative = "less")$p.value
 t.test (d_10_OJ, d_20_OJ, alternative = "less")$p.value
 ```
 
-As we can see, the p-values (relatively to the alpha-error) are still below the confidence level (default = 0.95). So once more we can reject the NULL hypothesis and say that for the type supplement OJ there is an increased tooth growth for higher dosages.
+As we can see, the p-values (relatively to the alpha-error) are still below the confidence level (default = 0.95) 0.05. So once more we can reject the NULL hypothesis and say that for the type supplement OJ there is an increased tooth growth for higher dosages.
 
 For the type supplement VC:
 
@@ -108,4 +124,4 @@ t.test (d_05_VC, d_10_VC, alternative = "less")$p.value
 t.test (d_10_VC, d_20_VC, alternative = "less")$p.value
 ```
 
-Based on the p-values, again we can reject the NULL hypothesis and confirm that the increasing dosage affects the tooth growth for the type supplement VC.
+Based on the p-values, again we can reject the NULL hypothesis and confirm that the increasing of dosage affects the tooth growth for the type supplement VC.
