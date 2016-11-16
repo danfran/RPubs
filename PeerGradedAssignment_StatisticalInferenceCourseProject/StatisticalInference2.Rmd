@@ -1,0 +1,111 @@
+---
+title: "Verify that the Change of Dosage and Type Supplement for Vitamin C Affects the Tooth Growth in Guinea Pigs"
+author: Daniele Francesconi
+output: html_document
+date: "November 16th, 2016"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+In this document is reported the second part of the peer-graded assignment for the [Statistical Inference Course](https://www.coursera.org/learn/statistical-inference). In this part of the project the data relative to "The Effect of Vitamin C on Tooth Growth in Guinea Pigs" included in the R dataset `ToothGrowth`.
+
+## Exploratory Data Analyses
+
+First the data description included in the dataset package:
+```
+The response is the length of odontoblasts (cells responsible for tooth growth) in 60 guinea pigs. Each animal received one of three dose levels of vitamin C (0.5, 1, and 2 mg/day) by one of two delivery methods, (orange juice or ascorbic acid (a form of vitamin C and coded as VC).
+```
+
+```{r}
+data(ToothGrowth)
+head(ToothGrowth)
+```
+
+The 3 features of the files are:
+
+* len = Tooth length
+* supp = Supplement type
+* dose = Dose in milligrams/day
+
+```{r}
+summary(ToothGrowth)
+str(ToothGrowth)
+unique(ToothGrowth$dose)
+unique(ToothGrowth$supp)
+```
+
+As we can see the `dose` has only three values (0.5, 1.0, 2.0) and the supplement two: OJ and VC.
+A quick data representation
+
+```{r}
+require(graphics)
+coplot(len ~ dose | supp, data = ToothGrowth, panel = panel.smooth,
+       xlab = "ToothGrowth data: length vs dose, given type of supplement")
+```
+
+give us the impression that the tooth growth is correlated with the dose: higher dose, more growth. This effect looks more visible with the VC type supplement.
+
+## Hypothesis Tests
+
+I will verify the following hypothesis defining what are my NULL hypothesis for any respective case:
+
+* **Type supplement** There is no length difference when VC and OJ are used. The alternate hypotesis says that the length with OJ > VC.
+* **Dosage** There is no length difference when difference dosage is used by supplement type. The alternate hypotesis says that the length with dosage at 2.0 > 1.0 > 0.5.
+
+The basic assumptions are that the variables are independent and identically distributed (iid). The tooth growth follows a normal distribution and the relative variance changes against the dosage and supplement type.
+
+### Hypothesis Tests for Type Supplement VC / OJ
+
+To verify the hypothesis I used the R function `t.test(...)`. First I separated two subsets based on type supplement:
+
+```{r}
+tg_oj <- ToothGrowth[ToothGrowth$supp == "OJ",]$len
+tg_vc <- ToothGrowth[ToothGrowth$supp == "VC",]$len
+```
+
+and I compared the two subsets as independent (default condition for the `t.test` function) to get the `p-value`:
+
+```{r}
+t.test (tg_oj, tg_vc, alternative = "greater")$p.value
+```
+
+The returned p-value is smaller than 0.05. It suggests that I can reject the NULL hypothesis as it is below the default alpha-error (5% tollerance). To conclude I can state that the growth is different based on different type supplement and that the supplement OJ affects the tooth growth more than VC.
+
+### Dosage by Type Supplement
+
+I start to isolate data by different dosage for the supplement type OJ:
+
+```{r}
+d_05_OJ <- ToothGrowth[ToothGrowth$dose == 0.5 & ToothGrowth$supp == "OJ",]$len
+d_10_OJ <- ToothGrowth[ToothGrowth$dose == 1.0 & ToothGrowth$supp == "OJ",]$len
+d_20_OJ <- ToothGrowth[ToothGrowth$dose == 2.0 & ToothGrowth$supp == "OJ",]$len
+```
+
+How it has been done before, let's see what the `t.test` returns:
+
+```{r}
+t.test (d_05_OJ, d_10_OJ, alternative = "less")$p.value
+t.test (d_10_OJ, d_20_OJ, alternative = "less")$p.value
+```
+
+As we can see, the p-values (relatively to the alpha-error) are still below the confidence level (default = 0.95). So once more we can reject the NULL hypothesis and say that for the type supplement OJ there is an increased tooth growth for higher dosages.
+
+For the type supplement VC:
+
+```{r}
+d_05_VC <- ToothGrowth[ToothGrowth$dose == 0.5 & ToothGrowth$supp == "VC",]$len
+d_10_VC <- ToothGrowth[ToothGrowth$dose == 1.0 & ToothGrowth$supp == "VC",]$len
+d_20_VC <- ToothGrowth[ToothGrowth$dose == 2.0 & ToothGrowth$supp == "VC",]$len
+```
+
+Similar to the OJ case:
+
+```{r}
+t.test (d_05_VC, d_10_VC, alternative = "less")$p.value
+t.test (d_10_VC, d_20_VC, alternative = "less")$p.value
+```
+
+Based on the p-values, again we can reject the NULL hypothesis and confirm that the increasing dosage affects the tooth growth for the type supplement VC.
