@@ -11,9 +11,21 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Synopsis
 
-TBD
+In this project, using the `mtcars` dataset, I will try to answer to the main question about the different impact of the automatic respect to the manual transmission:
 
-## Data Summary
+ * Is an automatic or manual transmission better for MPG?
+ * Quantify the MPG difference between automatic and manual transmissions
+
+In order to do that I have followed the main steps:
+
+* Exploratory Data Analysis
+* Model Selection
+* Inference 
+* Residual Anslysis
+
+Linear regression and multivariate linear regression have been used to select the model.
+
+## Executive Summary
 
 The data included in the R's datasets is called `mtcars` and the description says:
 
@@ -171,6 +183,12 @@ lines(predict(lm(mpg ~ ., mtcars)), col = "red")
 Overall we might to say that our model `fit2` it is more closed to the `fit10`, indicating that `am` and `wt` are quite important factors.
 
 ## Conclusions
+
+Looking at the model I have used, there was not a real change between automatic and manual transmission using the parameters `wt` and `am` against `mpg`. Residual analysis revelead that the model fits quite well the data respect to including all variables set. However the VIF and the correlation graph also say that some of the variables are mutually influenced, so taking some of those in or out it may over or under fitting the model.
+
+There is not a clear answer to the problem, because it is not really possible to define clearly which parameter is more important than others. It is due to the fact that the variables are mutually influenced and using linear model to describe those interactions is it not enough accurate. So, using other parameters, you can still have different results.
+
+More advanced models and more insightful data are required to give a better answer.
 
 ## Appendix A
 
