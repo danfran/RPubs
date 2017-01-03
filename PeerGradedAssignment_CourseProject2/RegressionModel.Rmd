@@ -1,8 +1,8 @@
 ---
 title: "Regression Models Course Project"
 author: "Daniele Francesconi"
-date: "23/12/2016"
-output: html_document
+date: "03/01/2017"
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -16,7 +16,7 @@ In this project, using the `mtcars` dataset, I will try to answer to the main qu
  * Is an automatic or manual transmission better for MPG?
  * Quantify the MPG difference between automatic and manual transmissions
 
-In order to do that I have followed the main steps:
+In order to do that, I have followed the steps:
 
 * Exploratory Data Analysis
 * Model Selection
@@ -40,7 +40,7 @@ head(mtcars)
 summary(mtcars)
 ```
 
-So we have 32 observations on 11 variables. From the documentation I have extracted the following variables descriptions:
+So we have 32 observations on 11 variables. Always from the documentation, I have extracted the following variable descriptions:
 
 Variables|Description
 ---------|-----------
@@ -56,11 +56,14 @@ Variables|Description
 *gear*	| Number of forward gears
 *carb*	| Number of carburetors
 
-Some of the values are *discrete* like: `cyl`, `vs`, `am`, `gear` and `carb`. However I will consider only `vs` and `am` as `factor`s:
+Some of the values are *discrete* like: `cyl`, `vs`, `am`, `gear` and `carb`. I change them to `factor`s:
 
 ```{r}
 mtcars$vs <- factor(mtcars$vs,labels=c('V','S'))
 mtcars$am <- factor(mtcars$am,labels=c('A','M'))
+mtcars$cyl <- factor(mtcars$cyl)
+mtcars$gear <- factor(mtcars$gear)
+mtcars$carb <- factor(mtcars$carb)
 ```
 
 ## Exploratory Data Analysis
@@ -81,24 +84,24 @@ display_barplot(table(mtcars$am, mtcars$gear) ,"AM vs. Gears", "Number of Gears"
 display_barplot(table(mtcars$am, mtcars$carb) ,"AM vs. Carb", "Number of Carburetors")
 ```
 
-Gears looks not having the fifth one in the Automatic model. Similarly Carburetors looks limited in the case of automatic model.
+Gears looks not having the fifth one in the Automatic model. Similarly carburetors look limited in the case of automatic model.
 
-Now, let's have a summary of the data, included two scatterplot matrixes relative to the variables for a better data insight: `mpg`, `hp` and `wt` separated by `am` (tranmission) and `cyl`:
+Now, let's have a summary of the data, included two scatterplot matrixes relative to the variables for a better data insight (`mpg`, `hp` and `wt` separated by `am` and `cyl`):
 
 ```{r, out.width = '100%', dpi=200}
 library(car)
 scatterplotMatrix(~mpg+hp+wt|am, data=mtcars, main="MPG - HP - WT vs AM")
 ```
 
-On the first quadrant we can see that we have higher values of `mpg` for manual transmission. This trend looks is confirmed for `mpg` against `hp` and `wt`.
+On the first quadrant we can see that we have higher values of `mpg` for manual transmission. This trend looks confirmed for `mpg` against `hp` and `wt`.
 
 ```{r, out.width = '100%', dpi=200}
 scatterplotMatrix(~mpg+hp+wt|cyl, data=mtcars, main="MPG - HP - WT vs CYL")
 ```
 
-Here we have 3 main categories of cars based on the number cylinders: 4, 6 and 8. It is easy to see that for higher number of cylinders `mpg` drops down due to higher fuel consumption. Same observation can be considered for higher values of `hp` and `wt` that correspond to lower `mpg` values.
+Here we have 3 main categories of cars based on the number cylinders: 4, 6 and 8. It is easy to see that for higher number of cylinders, `mpg` drops down due to higher fuel consumption. Same observation can be considered for higher values of `hp` and `wt` that correspond to lower `mpg` values.
 
-In **Appendix A** there is a complete display of the correlations across the whole set of variables in the dataset. Looking at the values for `mpg`, some of those correlations looks negative. However these correlations are meant for single independent variables. In case of multi-regressors, their impact on the outcome might change. Indeed, correlations suggest us another main point: `mpg` is strongly correlated to `am` but also `cyl`, `disp`, `hp`, `drat`, `wt` and `vs`. What makes the things even more complex are the mutual interactions between these variables. Using the *Variance Inflation Factors*, we can see that some variables are more influenced by others:
+In **Appendix A** there is a complete display of the correlations across the whole set of variables in the dataset. Looking at the values for `mpg`, some of those correlations look negative. However these correlations are meant for single independent variables. In case of multi-regressors, their impact on the outcome might change. Indeed, correlations suggest us another main point: `mpg` is strongly correlated to `am` but also `cyl`, `disp`, `hp`, `drat`, `wt` and `vs` and what makes the things even more complicated it is the mutual interaction between these variables. *Variance Inflation Factors* helps you to find out how much those variables are mutually influenced. For example this is how `disp` changes with and without `wt`:
 
 ```{r}
 sort(sqrt(vif(lm(mpg~., mtcars))), decreasing = TRUE)
@@ -109,7 +112,7 @@ sort(sqrt(vif(lm(mpg~. -wt, mtcars))), decreasing = TRUE)
 
 ## Model Selection
 
-To select the model, we will consider the fix regressor `am` for the outcome `mpg` as the base model. I will add incrementally new parameters, based to their absolute correlation respect to theh graph in **Appendix A** creating a set of nested models. Using the `anova` function I will select the best model, related to the `p-value`:
+To select the model, we will consider the fixed regressor `am` for the outcome `mpg` as the base model. I will add incrementally new parameters, based to their absolute correlations as in the graph in **Appendix A** creating so, a set of nested models. With the `anova` function then, I will select the best model, related to the `p-value`:
 
 ```{r}
 fit1  <- lm(mpg ~ am , mtcars)
@@ -126,7 +129,7 @@ fit10 <- update(fit1, mpg ~ am + wt + cyl + disp + hp + drat + carb + gear + qse
 anova(fit1, fit2, fit3, fit4, fit5, fit6, fit7, fit8, fit9, fit10)
 ```
 
-The model based on `am + wt` looks the best one. Still good is the model `am + wt + cyl`. Let us see if it can be improved including the interaction `wt * cyl`:
+The model based on `am + wt` looks the best one. Although it is still good, the model `am + wt + cyl` has lower `p-value` than `am + wt`. Let us see if it can be improved by including the interaction `wt * cyl`:
 
 ```{r}
 fit3Interaction  <- update(fit1, mpg ~ am + wt + cyl + wt * cyl)
@@ -145,17 +148,16 @@ summary(fit1)$coefficients
 summary(fit2)$coefficients
 ```
 
-It is possible to see that in the first case the manual transmission is better respect to the automatic one, as the coefficient increase is +7.245. In the second case, the two transmissions are pretty much the same. It means that the a `wt` regressor affects a lot the transmission.
-
-It means that we cannot easily stating if one transmission is better than another.
+It is possible to see that in the first case the manual transmission is better respect to the automatic one, as the coefficient increase is +7.245. In the second case, the two transmissions are pretty much the same. It means that `wt` regressor affects a lot the transmission and we cannot easily stating if one transmission is better than another.
 
 ## Residual Analysis
 
-In **Appendix B** residual plots for the models `fit2` and `fit10` are displayed. In both cases it seems that both models fit enough well the data. However there are a few values that are highlighted. It can be seen clearly from the graph *Normal Q-Q* as those value are out from the predicted linear model (suspiciously have some leverage). Instead the *Residuals-Fitted* graph looks covering well the distribution of the data. 
+In **Appendix B** residual plots for the models `fit2` and `fit10` are displayed. In both cases it seems that these models fit enough well the data. However there are a few values that are highlighted. It can be seen clearly from the graph *Normal Q-Q* as those values are out from the predicted linear model (potentially they have some leverage). Instead the *Residuals-Fitted* graph looks covering well the distribution of the data. 
 
-The suspicious values are related to the cars: Chrysler Imperial, Toyota Corolla and Fiat 128. Let's see their influence using *hatvalues* to see their level of leverage and *dfbetas* too see how much their inclusion affects the slope coefficient:
+The suspicious values are related to the cars Chrysler Imperial, Toyota Corolla and Fiat 128. Let's see their influence using *hatvalues* to quantify their level of leverage, and *dfbetas* to see how much their inclusion affects the slope coefficient:
 
-```{r, out.width = '100%', out.height = '100%', dpi=200, cache = TRUE, echo = FALSE}
+```{r, out.width = '100%', out.height = '100%', dpi=200, cache = TRUE}
+require(ggplot2)
 require(reshape2)
 
 model_under_investigation <- lm (mpg ~ am + wt - 1, mtcars)
@@ -167,32 +169,32 @@ dfb <- melt(round(dfbetas(model_under_investigation), 3))
 ggplot(data=dfb, aes(x=Var1, y=value, group=Var2)) + geom_line(aes(colour = Var2))+ theme(axis.text.x = element_text(angle=90, hjust=1, vjust=0.5)) + ylab('dfbetas') + xlab('cars') + ggtitle("Dfbetas: mpg ~ am + wt")
 ```
 
-For the *hatvalues* values are not small, but still in the average.
-In the case of *dbetas* values, the 3 cars looks to have high peaks, and in the case of Chrysler Imperial, both `am` types, the peaks are negative against the positive for `wt`. It would explain why it is in the top left quadrant.
+For the *hatvalues* peaks are not small, but not so big to affect in some way the model.
+In the case of *dbetas* values, the 3 cars look to have high peaks (positive and negative). In the case of Chrysler Imperial, for both `am` types, the peaks are negative against the positive for `wt`. It would explain why Chrysler Imperial is in the top left quadrant (Residual vs Fitted).
 We can conclude that those values have some influence but they do not affect particularly the model.
 
 It is also interesting to see the graphical comparison of the models `mpg ~ am`, `mpg ~ am + wt` and `mpg ~ .`:
 
-```{r}
+```{r, out.width = '100%', out.height = '100%', dpi=200, cache = TRUE}
 plot(predict(fit2))
 lines(predict(fit2), col = "black")
 lines(predict(fit1), col = "blue")
 lines(predict(lm(mpg ~ ., mtcars)), col = "red")
 ```
 
-Overall we might to say that our model `fit2` it is more closed to the `fit10`, indicating that `am` and `wt` are quite important factors.
+Overall we can say that our model `fit2` it is more closed to the `fit10`, indicating that `am` and `wt` are quite important factors.
 
 ## Conclusions
 
-Looking at the model I have used, there was not a real change between automatic and manual transmission using the parameters `wt` and `am` against `mpg`. Residual analysis revelead that the model fits quite well the data respect to including all variables set. However the VIF and the correlation graph also say that some of the variables are mutually influenced, so taking some of those in or out it may over or under fitting the model.
+Looking at the model I have used, there was not a real change between automatic and manual transmission using the parameters `wt` and `am` against `mpg`. Residual analysis revealed that the model fits quite well the data respect to including all the variable set. However the VIF and the correlation graph also say that some of the variables are mutually influenced. So, taking some of those in or out, we could over or under fitting the model.
 
-There is not a clear answer to the problem, because it is not really possible to define clearly which parameter is more important than others. It is due to the fact that the variables are mutually influenced and using linear model to describe those interactions is it not enough accurate. So, using other parameters, you can still have different results.
+To answer at the main question **Is an automatic or manual transmission better for MPG?** there is not a clear answer to the problem, because it is not really possible to define which parameters are more important than others. It is due to the fact that the variables are mutually influenced and using linear model to describe those interactions is it not enough accurate. So, exchanging parameters can easily leads to different results.
 
-More advanced models and more insightful data are required to give a better answer.
+More advanced models and more insightful data are required to give a more accurate answer.
 
 ## Appendix A
 
-```{r, out.width = '100%', out.height = '100%', dpi=200, cache = TRUE, echo = FALSE}
+```{r, out.width = '100%', out.height = '100%', dpi=200, cache = TRUE}
 require(GGally)
 require(ggplot2)
 
@@ -231,13 +233,13 @@ printCorrelations( mtcars, "Correlation Martrix for all variables" )
 
 ### Model mpg ~ am + wt
 
-```{r, out.width = '100%', out.height = '100%', dpi=200, cache = TRUE, echo = FALSE}
+```{r, out.width = '100%', out.height = '100%', dpi=200, cache = TRUE}
 plot(fit2)
 ```
 
 ### Model mpg ~ . (in 4 quadrants)
 
-```{r, out.width = '100%', out.height = '100%', dpi=200, cache = TRUE, echo = FALSE}
+```{r, out.width = '100%', out.height = '100%', dpi=200, cache = TRUE}
 par(mfrow=c(2,2))
 plot(fit10)
 ```
