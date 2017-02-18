@@ -1,0 +1,156 @@
+---
+title: "Course Project Prediction"
+author: "Daniele Francesconi"
+date: "11/02/2017"
+output: html_document
+---
+
+## Synopsis
+
+Using devices such as `Jawbone Up`, `Nike FuelBand`, and `Fitbit` it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks.
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project will be used data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: 
+
+<http://groupware.les.inf.puc-rio.br/har>
+
+
+## Getting and Cleaning Data
+
+The data used to build the prediction model are:
+
+* <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv>
+* <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv>
+
+Before we load all the data, we have to filter out all the unnecessary values:
+
+```{r}
+if (!file.exists("pml-training.csv")) {
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile="pml-training.csv")
+}
+
+if (!file.exists("pml-testing.csv")) {
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile="pml-testing.csv")
+}
+
+pml_train <- read.csv("pml-training.csv", header = TRUE, na.strings = c("", "NA", "#DIV/0!"))
+pml_test <- read.csv("pml-testing.csv", header = TRUE, na.strings = c("", "NA", "#DIV/0!"))
+```
+
+The file `pml-training.csv` has dimensions:
+
+```{r}
+dim(pml_train)
+```
+
+Based on the number of rows, with the following commands:
+
+```{r}
+na_count <-lapply(pml_train, function(y) sum(is.na(y)))
+length(na_count[na_count == 0])
+length(na_count[na_count > 19000])
+```
+
+it is easy to see that we have 100 out of 160 columns with missing values `NA`.
+In our model we are not going to consider these values as they are unnecessary predictors:
+
+```{r}
+bad_predictors <- names(na_count[na_count > 19000])
+pml_train <- pml_train[,!(names(pml_train) %in% bad_predictors)]
+pml_test <- pml_test[,!(names(pml_test) %in% bad_predictors)]
+```
+
+Finally I will remove other unnecessary predictors that can be easily spotted just looking at the left data:
+
+```{r}
+other_bad_predictors <- c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window")
+pml_train <- pml_train[,!(names(pml_train) %in% other_bad_predictors)]
+pml_test <- pml_test[,!(names(pml_test) %in% other_bad_predictors)]
+```
+
+The `classe` column is the data that quantifies the manner in which the exercise has been done and it is the value that we want to predict:
+
+```{r}
+summary(pml_train$classe)
+```
+
+As we can see, it is a `Factor` with rates expressed as `A`, `B`, `C`, `D` and `E`.
+
+## Data Partitioning
+
+In order to perform cross-validation, we need to separate the training set data using part of it (70%) for the training and the remaining part (30%) for testing (validation):
+
+```{r}
+library("caret")
+inTrain = createDataPartition(y = pml_train$classe, p = 0.7, list=F)
+training <- pml_train[inTrain,]
+testing <- pml_train[-inTrain,]
+```
+
+## Analysis Data Correlations
+
+Now that we have isolated the necessary predictors, let us see how they correlate between each other, displaying them for the First Principal Component order (FPC).
+Due to the high number of predictors, I use `corrplot` to display them in a better way possible (leaving out the `classe` values):
+
+```{r, cache=TRUE, out.width = '100%', out.height = '100%', dpi=200}
+library("corrplot")
+cor_training <- cor(training[, -54])
+corrplot(cor_training, method="circle", order = "FPC", type = "lower", tl.cex = 0.5)
+```
+
+The correlations value are displayed shading from red (negative correlation) to blue (positive correlation). Some of the displayed values have strong correlation but overall it looks a quite homogeneous and not too strong correlation status across all the predictors. So I will keep all of them.
+
+## Building Model
+
+Bagging may be a good choice as prediction model due to its capacity to deal with non linear models. Also it keep low bias and variance. However to get a better accuracy, **Random Forest** could be a better choice. The main problem with Random Forest is that could turn to be extremely slow for processing.
+
+In my case I have limited the cross validation to **4-fold** only. Also to accelerate the process, I have parallelized it (`parRF`).
+
+```{r cache = TRUE}
+modControl <- trainControl(method = "cv", number = 4)
+modFit <- train(classe ~ ., data = training, method = "parRF", trControl = modControl)
+modFit
+```
+
+The model created has the following structure:
+
+```{r cache = TRUE}
+library(rpart)
+library(rpart.plot)
+tree <- rpart(classe ~ ., data=training, method="class")
+prp(tree)
+```
+
+## Evaluating Model Accuracy
+
+In order to evaluate the accuracy of the model over the testing set, we need to apply the prediction:
+
+```{r cache = TRUE}
+prediction <- predict(modFit, testing)
+accuracy <- postResample(prediction, testing$classe)
+accuracy
+```
+
+The confusion matrix gives an alternative to evaluate the accuracy too:
+
+```{r cache = TRUE}
+confusion_matrix <- confusionMatrix(testing$classe, prediction)
+confusion_matrix
+```
+
+and we can estimate the **out-of-sample error** simply with:
+
+```{r}
+1 - as.numeric(confusion_matrix$overall[1])
+```
+
+Both the accuracy evaluations returned a value of ~ **99.92%** and the relative out-of-sample error is ~ **0.08%**.
+
+## Predicting with the Model
+
+Finally let us see what are the predicted values for the testing set when we use the built model:
+
+```{r message=FALSE}
+predict(modFit, pml_test)
+```

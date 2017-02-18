@@ -7,3 +7,5 @@
 * [How Central Limit Theorem Applies to Exponential Distribution](http://rpubs.com/daniele/how-central-limit-theorem-applies-to-exponential-distribution)
 
 * [Regression Models](http://rpubs.com/daniele/regression-models)
+
+* [Random Forest Prediction for Fitness Devices](http://rpubs.com/daniele/random-forest-prediction-for-fitness-devices)
