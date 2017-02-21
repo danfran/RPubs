@@ -1,0 +1,45 @@
+---
+title: "London Underground Map"
+author: "Daniele Francesconi"
+date: "21/02/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+library(jsonlite)
+library(leaflet)
+
+if (!file.exists("tfl_lines.json")) {
+  download.file("https://raw.githubusercontent.com/oobrien/vis/master/tube/data/tfl_lines.json", destfile = "tfl_lines.json")
+}
+
+if (!file.exists("tfl_stations.json")) {
+  download.file("https://raw.githubusercontent.com/oobrien/vis/master/tube/data/tfl_stations.json", destfile = "tfl_stations.json")
+}
+
+geojson_lines <- readLines("tfl_lines.json", warn = FALSE) %>%
+  paste(collapse = "\n") %>%
+  fromJSON(simplifyVector = FALSE)
+
+geojson_lines$style = list(
+  weight =3,
+  color = "#000",
+  opacity = 1,
+  fillOpacity = 0
+)
+
+geojson_stations <- readLines("tfl_stations.json", warn = FALSE) %>%
+  paste(collapse = "\n") %>%
+  fromJSON(simplifyVector = FALSE)
+
+leaflet(width = "100%") %>% 
+  setView(lng = -0.118092, lat = 51.509865, zoom = 14) %>%
+  addTiles() %>% 
+  addGeoJSON(geojson_lines) %>%
+  addGeoJSON(geojson_stations) 
+```
+
