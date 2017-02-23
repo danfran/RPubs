@@ -1,0 +1,51 @@
+---
+title: 'R Markdown Presentation & Plotly - 3D World Sphere'
+author: "Daniele Francesconi"
+date: "23/02/2017"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## R Markdown Presentation & Plotly
+
+I have included an example of rotatable 3D World Map using Plotly.
+
+## Rotatable World Sphere
+
+```{r message=FALSE}
+library(plotly)
+library(rangl)
+library(maptools)
+
+data(wrld_simpl)
+
+## max area in native units of the map data
+## globe() just reprojects to geocent, but stores in rangl's normal way (objects, primitives, vertices)
+mesh <- plot(globe(rangl(subset(wrld_simpl), max_area = 0.5)))
+
+# plot point cloud
+x <- mesh$vb[1,]
+y <- mesh$vb[2,]
+z <- mesh$vb[3,]
+m <- matrix(c(x,y,z), ncol=3, dimnames=list(NULL,c("x","y","z")))
+
+# colours in z don't make sense here, need to map object aesthetics above
+zmean <- apply(t(mesh$it),MARGIN=1,function(row){mean(m[row,3])})
+
+library(scales)
+facecolor = colour_ramp(
+  brewer_pal(palette="OrRd")(9)
+)(rescale(x=zmean))
+
+plot_ly(
+  x = x, y = y, z = z,
+  i = mesh$it[1,]-1, j = mesh$it[2,]-1, k = mesh$it[3,]-1,
+  facecolor = facecolor,
+  type = "mesh3d"
+)
+```
+
+## Thank you for your attention!
