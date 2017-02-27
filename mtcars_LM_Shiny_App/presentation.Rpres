@@ -1,8 +1,17 @@
+<style type="text/css">
+
+div .slideContent {
+  font-size: 0.65em;
+}
+
+</style>
+
 Linear Models and Residuals for 'mtcars'
 ========================================================
 author: Daniele Francesconi
 date: 26-02-2017
-autosize: true
+width: 1440
+height: 900
 transition: rotate
 transition-speed: slow
 
@@ -12,6 +21,8 @@ Overview
 This presentation contains documentation for the ShinyApp [Linear Models and Residuals for 'mtcars'](https://daniele.shinyapps.io/mtcars_lm_shiny_app/).
 
 The application uses `mtcars` data and allows the user to select different features of the dataset to get linear model predictions, hatvalues and df-betas for the `mpg` (Miles/(US) gallon) observable as distinct plots.
+
+![Screenshot of the application](screenshot.png)
 
 About the Data
 ========================================================
@@ -45,5 +56,3 @@ From the sidebar a user can select one or more features of the `mtcars` data, ex
 - **Linear Models** shows the prediction of the linear model (black line) created by the selected features vs `mpg ~ am` (blue line - `am` is a good predictor on its own) vs `mpg ~ .` (red line).
 - **HatValues** shows the hatvalues plot by car models for the selected features.
 - **Betas** shows the df-beats plot by car models for the selected features.
-
-![Screenshot of the application](screenshot.png)
