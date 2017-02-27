@@ -1,0 +1,49 @@
+Linear Models and Residuals for 'mtcars'
+========================================================
+author: Daniele Francesconi
+date: 26-02-2017
+autosize: true
+transition: rotate
+transition-speed: slow
+
+Overview
+========================================================
+
+This presentation contains documentation for the ShinyApp [Linear Models and Residuals for 'mtcars'](https://daniele.shinyapps.io/mtcars_lm_shiny_app/).
+
+The application uses `mtcars` data and allows the user to select different features of the dataset to get linear model predictions, hatvalues and df-betas for the `mpg` (Miles/(US) gallon) observable as distinct plots.
+
+About the Data
+========================================================
+
+The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973–74 models).
+
+```{r}
+data(mtcars)
+summary(mtcars)
+head(mtcars,2)
+```
+
+About the Code
+========================================================
+
+The application is built using Shiny web framework from RStudio.
+
+You can find the code @ [GitHub repository](https://github.com/danfran/RPubs/mtcars_LM_Shiny_App)
+
+The whole source code is composed by two files:
+
+* **ui.R** There are two main areas as a sidebar to select the features of the data `mtcars` and a central 3-tabs panel with multiple plots.
+* **server.R** It uses `reactive` component of the Shiny framework to return all the 3 plots every time a single option is checked from the sidebar. Also, using the `validate` option, an error message will be displayed in the 3 tabs, if none of the features are selected.
+
+How the Application Works
+========================================================
+
+From the sidebar a user can select one or more features of the `mtcars` data, excluding the `mpg` (that gets predicted). When one of the features is checked, the application will display the new generated plots. If none of the features is selected, instead an error message will be displayed.
+
+### The 3 tabs include the following plots:
+- **Linear Models** shows the prediction of the linear model (black line) created by the selected features vs `mpg ~ am` (blue line - `am` is a good predictor on its own) vs `mpg ~ .` (red line).
+- **HatValues** shows the hatvalues plot by car models for the selected features.
+- **Betas** shows the df-beats plot by car models for the selected features.
+
+![Screenshot of the application](screenshot.png)

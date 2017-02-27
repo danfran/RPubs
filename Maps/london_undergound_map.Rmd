@@ -8,7 +8,7 @@ output: html_document
 Create a web page using R Markdown that features a map created with Leaflet.
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
