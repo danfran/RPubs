@@ -29,7 +29,7 @@ About the Code
 
 The application is built using Shiny web framework from RStudio.
 
-You can find the code @ [GitHub repository](https://github.com/danfran/RPubs/mtcars_LM_Shiny_App)
+You can find the code @ [GitHub repository](https://github.com/danfran/RPubs/tree/master/mtcars_LM_Shiny_App)
 
 The whole source code is composed by two files:
 
